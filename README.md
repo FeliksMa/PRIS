@@ -1,5 +1,28 @@
 # PRIS：个人研究情报系统
 
+## 云端版
+
+云端 Research Desk 使用带 ChatGPT 登录保护的 Sites 网页与 D1 数据库，电脑和手机可访问同一 HTTPS 地址。
+Python 采集与分析流程由私有 GitHub 仓库的 Actions 执行；网页负责日报、论文、偏好、研究对话和阅读状态。
+网页点击“生成新知”会进入云端队列，下一次 GitHub 调度处理。调度并非实时保证。
+
+每天目标为北京时间 00:30 生成新知；每 30 分钟检查反馈和网页任务队列。
+云端流程启用后应停用 Windows 同名日报和反馈任务，避免重复推送与多个 Telegram 消费者。
+GitHub Actions 可能因服务调度而延迟，需关注仓库 Actions 状态和网站运行记录。
+
+云端密钥配置：
+
+- Sites 加密环境配置：`DEEPSEEK_API_KEY`、`DEEPSEEK_MODEL`、`PRIS_RUNNER_TOKEN`
+- GitHub Actions Secrets：原有 DeepSeek、Telegram、Zotero 凭据，以及 `PRIS_CLOUD_URL`、`PRIS_SITE_ACCESS_TOKEN`、`PRIS_RUNNER_TOKEN`
+- GitHub Actions Variables：配置完成后设 `PRIS_CLOUD_ENABLED=true`
+
+部署前用 `python -m pris.cloud --root . --initial-upload` 导入本人授权的研究记录、日报和偏好。
+后续同步不覆盖已修改的云端偏好。网页修改会被 Python 运行节点拉取并用于下一次推荐。
+原始 PDF 和本机密钥不进入网页、数据库或 Git 源码。云端对话只发送问题、当前偏好与主动选中的论文摘要/解读至 DeepSeek。
+日报可下载 Markdown 并导入本地 Obsidian，GitHub Actions 也保留短期 Markdown 运行产物。
+
+`cloud/` 是云端网页源码镜像；托管版本由 Sites 源码工作流发布，GitHub 主仓库用于项目留存。
+
 PRIS 每晚发现和筛选经济学、AI及少量社会人文内容，调用 DeepSeek 生成中文简报，通过 Telegram 推送，并将完整 Markdown 保存到 Obsidian。只有用户明确要求深读的文献才会进入 Zotero。
 
 ## Research Desk 管理界面
