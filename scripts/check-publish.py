@@ -32,6 +32,14 @@ if envfile.exists():
                 value = value.strip().strip('"').strip("'")
                 if len(value) >= 5:
                     secrets.append(value.encode())
+try:
+    from pris.config import load_settings
+    from pris.connections import SECRET_NAMES
+    settings = load_settings(root)
+    secrets.extend(settings.secret(name).encode() for name in SECRET_NAMES if len(settings.secret(name)) >= 5)
+except Exception:
+    print('Publish check blocked: cannot safely inspect the local credential store.')
+    sys.exit(1)
 for path in paths:
     content = git("show", ":" + path)
     if any(secret in content for secret in secrets):

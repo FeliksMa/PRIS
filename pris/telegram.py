@@ -14,11 +14,12 @@ class TelegramClient:
     def __init__(self, settings: Settings):
         self.token = settings.secret("TELEGRAM_BOT_TOKEN")
         self.chat_id = settings.secret("TELEGRAM_CHAT_ID")
+        self.enabled = bool(settings.raw.get("telegram", {}).get("enabled", True))
         self.base = f"https://api.telegram.org/bot{self.token}" if self.token else ""
 
     @property
     def ready(self) -> bool:
-        return bool(self.token and self.chat_id)
+        return self.enabled and bool(self.token and self.chat_id)
 
     def send(self, text: str, reply_markup: dict[str, Any] | None = None) -> None:
         if not self.ready:

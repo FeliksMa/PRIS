@@ -93,6 +93,29 @@ class DashboardTests(unittest.TestCase):
             with client.open(url + "/api/bootstrap") as response:
                 data = json.load(response)
             self.assertNotIn("DEEPSEEK_API_KEY", json.dumps(data))
+            with client.open(url + "/api/connections") as response:
+                connections = json.load(response)
+            self.assertIsInstance(connections["credentials"]["DEEPSEEK_API_KEY"], bool)
+            connection_request = urllib.request.Request(url + "/api/connections", data=json.dumps({"options": {"daily_budget_usd": .07}}).encode(),
+                                                        headers={"Content-Type": "application/json", "Origin": url}, method="POST")
+            with self.assertRaises(urllib.error.HTTPError) as denied_connection:
+                client.open(connection_request)
+            self.assertEqual(denied_connection.exception.code, 403)
+            connection_request.add_header("X-PRIS-Token", data["token"])
+            with client.open(connection_request) as response:
+                self.assertEqual(json.load(response)["options"]["daily_budget_usd"], .07)
+            self.assertEqual(load_settings(self.root).raw["deepseek"]["daily_budget_usd"], .07)
+            if os.name == "nt":
+                fixture = "fixture-only-http-api-key"
+                credential_request = urllib.request.Request(url + "/api/connections",
+                    data=json.dumps({"credentials": {"DEEPSEEK_API_KEY": fixture}}).encode(),
+                    headers={"Content-Type": "application/json", "Origin": url, "X-PRIS-Token": data["token"]}, method="POST")
+                with client.open(credential_request) as response:
+                    self.assertNotIn(fixture, response.read().decode())
+                self.assertEqual(load_settings(self.root).secret("DEEPSEEK_API_KEY"), fixture)
+                self.assertNotIn(fixture, (self.root / "data" / "connections.json").read_text())
+                with client.open(url + "/api/bootstrap") as response:
+                    self.assertNotIn(fixture, response.read().decode())
             with client.open(url + "/api/papers?q=attention") as response:
                 self.assertEqual(json.load(response)["total"], 1)
             payload = data["preferences"]

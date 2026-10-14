@@ -13,12 +13,13 @@ class ZoteroClient:
     def __init__(self, settings: Settings):
         self.api_key = settings.secret("ZOTERO_API_KEY")
         self.user_id = settings.secret("ZOTERO_USER_ID")
+        self.enabled = bool(settings.raw.get("zotero", {}).get("enabled", True))
         self.collection_name = settings.raw.get("zotero", {}).get("collection_name", "PRIS 深度阅读")
         self.base = f"https://api.zotero.org/users/{self.user_id}"
 
     @property
     def ready(self) -> bool:
-        return bool(self.api_key and self.user_id)
+        return self.enabled and bool(self.api_key and self.user_id)
 
     @property
     def headers(self) -> dict[str, str]:

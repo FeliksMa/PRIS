@@ -15,7 +15,8 @@ from urllib.parse import parse_qs, urlsplit
 
 from .config import load_settings
 from .db import Database
-from .http import post_json
+from .http import get_json, post_json
+from .connections import public_connections, save_connections
 from .preferences import PREFERENCE_LOCK, public_preferences, save_overrides, validate_preferences
 
 
@@ -119,7 +120,7 @@ class Workspace:
                             "Telegram": bool(settings.secret("TELEGRAM_BOT_TOKEN") and settings.secret("TELEGRAM_CHAT_ID")),
                             "Zotero": bool(settings.secret("ZOTERO_API_KEY") and settings.secret("ZOTERO_USER_ID"))},
             "vault": str(settings.vault), "job": self.job,
-            "nightly_time": "00:30（Windows 任务计划程序）",
+            "nightly_time": "00:30（需先安装 Windows 定时任务；关机时不运行）",
         }
 
     def message(self, role: str, content: str, proposal: dict | None = None) -> int:
@@ -142,7 +143,7 @@ class Workspace:
             settings = self.current()
             key = settings.secret("DEEPSEEK_API_KEY")
             if not key:
-                raise ValueError("请先在 .env 配置 DeepSeek API Key")
+                raise ValueError("请先在「连接与设置」或本机 .env 配置 DeepSeek API Key")
             ds = settings.raw["deepseek"]
             today = date.today().isoformat()
             if self.db.daily_cost(today) >= float(ds.get("daily_budget_usd", .30)):
@@ -264,7 +265,7 @@ def serve(root: Path, port: int = 8765) -> None:
                 if self.headers.get("Host") != authority:
                     self.output({"error": "无效主机"}, 403)
                     return
-                filename = {"/": "index.html", "/app.js": "app.js", "/style.css": "style.css"}.get(path)
+                filename = {"/": "index.html", "/app.js": "app.js", "/style.css": "style.css", "/settings.css": "settings.css"}.get(path)
                 if not filename:
                     self.output({"error": "未找到"}, 404)
                     return
@@ -278,6 +279,8 @@ def serve(root: Path, port: int = 8765) -> None:
                     value = {"token": token, "overview": workspace.overview(), "preferences": workspace.preferences(), "messages": workspace.messages()}
                 elif path == "/api/overview":
                     value = workspace.overview()
+                elif path == "/api/connections":
+                    value = public_connections(workspace.current())
                 elif path == "/api/papers":
                     value = workspace.papers(args.get("q", ""), args.get("field", ""), args.get("status", ""), int(args.get("page", 1)))
                 elif path == "/api/report":
@@ -302,6 +305,22 @@ def serve(root: Path, port: int = 8765) -> None:
                 path = urlsplit(self.path).path
                 if path == "/api/preferences":
                     value = workspace.save(payload, "通过偏好表单修改")
+                elif path == "/api/connections":
+                    if workspace.job.get("state") == "running" or workspace.chat_lock.locked():
+                        raise ValueError("请等待当前任务或对话结束，再更改连接")
+                    save_connections(workspace.root, payload)
+                    value = public_connections(workspace.current())
+                elif path == "/api/test-model":
+                    settings = workspace.current()
+                    key = settings.secret("DEEPSEEK_API_KEY")
+                    if not key:
+                        raise ValueError("请先保存 API Key")
+                    base = settings.raw["deepseek"].get("base_url", "https://api.deepseek.com").rstrip("/")
+                    if base not in {"https://api.deepseek.com", "https://api.deepseek.com/v1"}:
+                        raise ValueError("此检查仅允许 DeepSeek 官方接口，不向其他地址发送密钥")
+                    result = get_json(base + "/models", headers={"Authorization": "Bearer " + key})
+                    models = [str(m["id"]) for m in result.get("data", []) if isinstance(m, dict) and isinstance(m.get("id"), str)]
+                    value = {"ok": True, "models": models[:100], "message": "已连接；仅查询模型列表，未发送论文或对话"}
                 elif path == "/api/restore":
                     with workspace.db.connect() as con:
                         row = con.execute("SELECT before_json FROM control_history WHERE id=?", (payload.get("id"),)).fetchone()

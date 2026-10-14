@@ -14,7 +14,8 @@ from .db import Database
 from .http import request
 from .models import Assessment, Paper
 from .preferences import public_preferences, save_overrides, validate_preferences
-from .privacy import public_paper_url, research_export
+from .privacy import private_values, public_paper_url, research_export
+from .connections import SECRET_NAMES
 
 APPROVED_CLOUD_ORIGIN = "https://pris-research-desk.m35538181135.chatgpt.site"
 
@@ -57,7 +58,7 @@ def snapshot(root: Path) -> dict:
                                           "telegram": bool(settings.secret("TELEGRAM_BOT_TOKEN") and settings.secret("TELEGRAM_CHAT_ID")),
                                           "zotero": bool(settings.secret("ZOTERO_API_KEY") and settings.secret("ZOTERO_USER_ID")),
                                           "last_sync": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat()},
-    })
+    }, credentials=private_values() + [settings.secret(name) for name in SECRET_NAMES if len(settings.secret(name)) >= 5])
 
 
 def upload(root: Path, initial: bool = False, last_nightly: str = "") -> None:
