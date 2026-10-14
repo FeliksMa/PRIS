@@ -1,0 +1,22 @@
+[project]
+name = "pris"
+version = "0.1.0"
+description = "Personal Research Intelligence System"
+requires-python = ">=3.11"
+dependencies = ["pypdf>=6.0"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["pris*"]
+
+[tool.setuptools.package-data]
+pris = ["web/*.html", "web/*.css", "web/*.js"]
+
+[project.scripts]
+pris = "pris.app:main"
+
+[tool.unittest]
+start-directory = "tests"

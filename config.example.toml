@@ -1,0 +1,176 @@
+[system]
+active_runner_id = "primary"
+timezone = "Asia/Shanghai"
+database = "data/pris.db"
+vault = "vault/PRIS"
+days_back = 3
+max_candidates = 50
+daily_focus = 10
+daily_quick = 5
+
+[profile]
+output_language = "中文为主，必要术语保留英文"
+economics_china_share = 0.50
+economics_academic_share = 0.50
+ai_selection_principle = "优先选择提出新机制、新架构、新训练或推理方法、新型组件或新编程抽象的工作；不限于Agent，也包括MoE、Attention、Skills优化、表示学习、World Model等"
+
+[profile.weights]
+economics = 0.60
+ai = 0.30
+humanities = 0.10
+
+[profile.interests]
+economics = [
+  "behavioral economics", "uncertainty", "decision making", "expectations",
+  "macroeconomics", "monetary policy", "inflation", "household consumption",
+  "labor economics", "microeconomic theory", "experimental economics", "causal inference",
+  "economic growth", "employment", "trade", "fiscal policy", "business cycle",
+  "行为经济学", "不确定性", "决策", "宏观经济", "货币政策", "消费", "就业", "财政政策"
+]
+ai = [
+  "architecture", "mechanism", "programming paradigm", "mixture of experts",
+  "attention", "routing", "optimizer", "skill learning", "tool use", "inference",
+  "representation learning", "world model", "training objective", "distillation",
+  "test-time compute", "test-time learning", "continual learning", "adaptation",
+  "memory", "reasoning", "modular AI", "composability", "sparse model", "adapter",
+  "agent", "agentic", "multi-agent", "workflow", "context engineering",
+  "computer use", "long horizon", "spatial intelligence", "dynamic composition"
+]
+humanities = [
+  "sociology", "anthropology", "social history", "modernity", "consumption society",
+  "社会学", "人类学", "社会史", "现代性", "消费社会"
+]
+
+[profile.exclude]
+keywords = ["psychoanalytic jargon", "玄学式精神分析"]
+
+[profile.hard_exclude]
+ai = [
+  "analog circuit", "circuit design", "circuit sizing", "integrated circuit",
+  "electronic design automation", "VLSI", "FPGA", "semiconductor device"
+]
+
+[profile.style]
+depth = "expanded"
+economics_academic = "研究问题—背景与文献缺口—数据或模型—识别策略—主要结果—贡献—局限"
+economics_news = "核心变化—关键数据—形成原因—现实影响—后续需要观察的指标"
+ai = "解决什么问题—提出了什么新机制、架构、训练/推理方式、组件或编程抽象—相对旧方法改变了什么—为何可能影响后续AI系统设计—实际可用性—成熟度与限制；不限于Agent方向"
+
+[profile.daily_mix.focus]
+economics = 6
+ai = 4
+humanities = 0
+
+[profile.daily_mix.quick]
+economics = 3
+ai = 2
+humanities = 0
+
+[deepseek]
+base_url = "https://api.deepseek.com"
+model = "deepseek-v4-flash"
+thinking = false
+batch_size = 5
+daily_budget_usd = 0.30
+input_usd_per_million = 0.22
+output_usd_per_million = 0.66
+
+[telegram]
+enabled = true
+poll_limit = 100
+
+[zotero]
+enabled = true
+collection_name = "PRIS 深度阅读"
+
+[[sources.crossref_journals]]
+name = "American Economic Review"
+issn = "0002-8282"
+
+[[sources.crossref_journals]]
+name = "Quarterly Journal of Economics"
+issn = "0033-5533"
+
+[[sources.crossref_journals]]
+name = "Journal of Political Economy"
+issn = "0022-3808"
+
+[[sources.crossref_journals]]
+name = "Econometrica"
+issn = "0012-9682"
+
+[[sources.crossref_journals]]
+name = "Review of Economic Studies"
+issn = "0034-6527"
+
+[sources.nber]
+enabled = true
+max_results = 30
+
+[[sources.rss]]
+name = "People's Bank of China"
+url = "http://www.pbc.gov.cn/goutongjiaoliu/113456/113469/index.html"
+field = "economics"
+source_type = "institution_update"
+enabled = false
+
+[[sources.rss]]
+name = "国家统计局·最新发布"
+url = "https://www.stats.gov.cn/sj/zxfb/rss.xml"
+field = "economics"
+source_type = "institution_data"
+region = "china"
+
+[[sources.rss]]
+name = "国家统计局·数据解读"
+url = "https://www.stats.gov.cn/sj/sjjd/rss.xml"
+field = "economics"
+source_type = "institution_analysis"
+region = "china"
+
+[[sources.rss]]
+name = "BIS Research"
+url = "https://www.bis.org/doclist/bis_fsi_publs.rss"
+field = "economics"
+source_type = "institution_research"
+region = "global"
+
+[[sources.rss]]
+name = "BIS Statistics"
+url = "https://www.bis.org/doclist/all_statistics.rss"
+field = "economics"
+source_type = "institution_data"
+region = "global"
+
+[[sources.rss]]
+name = "Federal Reserve Monetary Policy"
+url = "https://www.federalreserve.gov/feeds/press_monetary.xml"
+field = "economics"
+source_type = "institution_analysis"
+region = "global"
+
+[[sources.rss]]
+name = "FRED Blog"
+url = "https://fredblog.stlouisfed.org/feed/"
+field = "economics"
+source_type = "institution_analysis"
+region = "global"
+
+[[sources.rss]]
+name = "OpenAI News"
+url = "https://openai.com/news/rss.xml"
+field = "ai"
+source_type = "industry_primary"
+region = "global"
+
+[[sources.rss]]
+name = "Hugging Face Blog"
+url = "https://huggingface.co/blog/feed.xml"
+field = "ai"
+source_type = "industry_primary"
+region = "global"
+
+[sources.arxiv]
+enabled = true
+categories = ["cs.AI", "cs.LG", "cs.CL", "cs.MA"]
+max_results = 30

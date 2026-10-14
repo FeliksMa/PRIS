@@ -1,0 +1,15 @@
+.env
+config.toml
+data/
+vault/
+__pycache__/
+*.pyc
+tmp/
+.venv/
+*.log
+*.zip
+*.pdf
+*.egg-info/
+build/
+dist/
+
