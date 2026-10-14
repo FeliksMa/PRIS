@@ -14,14 +14,19 @@ from .db import Database
 from .http import request
 from .models import Assessment, Paper
 from .preferences import public_preferences, save_overrides, validate_preferences
+from .privacy import public_paper_url, research_export
+
+APPROVED_CLOUD_ORIGIN = "https://pris-research-desk.m35538181135.chatgpt.site"
 
 
 def cloud_request(payload: dict | None = None) -> dict:
     base = os.environ.get("PRIS_CLOUD_URL", "").rstrip("/")
     access = os.environ.get("PRIS_SITE_ACCESS_TOKEN", "")
     runner = os.environ.get("PRIS_RUNNER_TOKEN", "")
-    if not base.startswith("https://") or not access or not runner:
+    if base != APPROVED_CLOUD_ORIGIN or not access or not runner:
         raise ValueError("请配置 PRIS_CLOUD_URL、PRIS_SITE_ACCESS_TOKEN 和 PRIS_RUNNER_TOKEN")
+    if payload is not None:
+        payload = research_export(payload)
     raw = request(base + "/api/sync", method="POST" if payload is not None else "GET",
                   headers={"OAI-Sites-Authorization": f"Bearer {access}", "X-PRIS-Runner-Token": runner,
                            "Content-Type": "application/json"},
@@ -39,19 +44,20 @@ def snapshot(root: Path) -> dict:
             p = dict(row)
             p["authors"] = json.loads(p.pop("authors_json"))
             p["assessment"] = json.loads(p.pop("payload_json") or "null")
+            p["url"] = public_paper_url(p["url"])
             papers.append(p)
         usage = [dict(r) for r in con.execute("SELECT run_date,SUM(cost_usd) cost,SUM(input_tokens) input_tokens,SUM(output_tokens) output_tokens FROM usage GROUP BY run_date")]
         feedback = [dict(r) for r in con.execute("SELECT f.*,p.title FROM feedback f LEFT JOIN papers p ON p.id=f.paper_id ORDER BY f.id DESC LIMIT 100")]
     base = settings.vault / "01 每日简报"
     reports = [{"path": str(p.relative_to(base)).replace("\\", "/"), "name": p.stem, "date": p.name[:10],
                 "content": p.read_text(encoding="utf-8")} for p in base.rglob("*.md")] if base.exists() else []
-    return {
+    return research_export({
         "papers": papers, "reports": reports, "preferences": public_preferences(settings.raw), "usage": usage,
         "feedback": feedback, "runner": {"model": settings.raw["deepseek"].get("model"),
                                           "telegram": bool(settings.secret("TELEGRAM_BOT_TOKEN") and settings.secret("TELEGRAM_CHAT_ID")),
                                           "zotero": bool(settings.secret("ZOTERO_API_KEY") and settings.secret("ZOTERO_USER_ID")),
                                           "last_sync": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat()},
-    }
+    })
 
 
 def upload(root: Path, initial: bool = False, last_nightly: str = "") -> None:
@@ -110,10 +116,10 @@ def execute(root: Path) -> None:
         upload(root, last_nightly=last)
         if claimed:
             cloud_request({"action": "complete", "id": claimed["id"], "success": True, "output": "云端操作完成，资料已同步。"})
-    except Exception as exc:
+    except Exception:
         if claimed:
-            cloud_request({"action": "complete", "id": claimed["id"], "success": False, "output": str(exc)[:1000]})
-        raise
+            cloud_request({"action": "complete", "id": claimed["id"], "success": False, "output": "运行失败，已隐藏错误详情以保护凭据及研究内容。"})
+        raise RuntimeError("云端研究任务失败，敏感错误详情未写入日志") from None
 
 
 def main():

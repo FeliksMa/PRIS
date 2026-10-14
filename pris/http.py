@@ -21,10 +21,17 @@ def _safe_url(url: str) -> str:
     path = parsed.path
     if parsed.netloc.lower() == "api.telegram.org":
         path = re.sub(r"/bot[^/]+", "/bot<redacted>", path, count=1)
-    sensitive = {"key", "api_key", "token", "access_token"}
+    sensitive = {"key", "api_key", "token", "access_token", "secret", "password", "signature", "authorization"}
     query = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
     safe_query = [(name, "<redacted>" if name.lower() in sensitive else value) for name, value in query]
-    return urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, path, urllib.parse.urlencode(safe_query), ""))
+    host = parsed.netloc.rsplit("@", 1)[-1]
+    return urllib.parse.urlunsplit((parsed.scheme, host, path, urllib.parse.urlencode(safe_query), ""))
+
+
+class _NoCredentialRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        # Never forward authentication to a redirect destination, even on the same host.
+        return None
 
 
 def request(
@@ -38,15 +45,22 @@ def request(
     merged = {"User-Agent": USER_AGENT, "Accept": "*/*"}
     if headers:
         merged.update(headers)
+    authenticated = any(name.lower() in {
+        "authorization", "zotero-api-key", "oai-sites-authorization", "x-pris-runner-token"
+    } for name in merged) or urllib.parse.urlsplit(url).hostname == "api.telegram.org"
+    if authenticated and urllib.parse.urlsplit(url).scheme != "https":
+        raise HttpError("带凭据的请求必须使用 HTTPS")
     req = urllib.request.Request(url, data=data, headers=merged, method=method)
+    opener = urllib.request.build_opener(_NoCredentialRedirect()) if authenticated else urllib.request.build_opener()
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as response:
+        with opener.open(req, timeout=timeout) as response:
             return response.read()
     except urllib.error.HTTPError as exc:
-        body = exc.read().decode("utf-8", errors="replace")[:500]
-        raise HttpError(f"HTTP {exc.code} {_safe_url(url)}: {body}") from exc
+        exc.close()
+        # Providers may echo keys or submitted research in response bodies.
+        raise HttpError(f"HTTP {exc.code} {_safe_url(url)}") from None
     except urllib.error.URLError as exc:
-        raise HttpError(f"无法访问 {_safe_url(url)}: {exc.reason}") from exc
+        raise HttpError(f"无法访问 {_safe_url(url)}（网络或 TLS 连接失败）") from None
 
 
 def get_json(url: str, *, headers: dict[str, str] | None = None) -> Any:
